@@ -14,22 +14,31 @@ const DIGITS: [usize; NUM_DIGITS] = {
     a
 };
 
-// Parallelize the task by splitting into permutations of n-1 elements with the missing element swapped to the end.
-const DIGITS_SWAP_END: [[usize; NUM_DIGITS]; NUM_DIGITS] = {
-    let mut a = [[0; NUM_DIGITS]; NUM_DIGITS];
+// Parallelize the task by splitting into permutations of n-2 elements with the missing elements swapped to the end.
+const DIGITS_SWAP_END: [[usize; NUM_DIGITS]; NUM_DIGITS * (NUM_DIGITS - 1)] = {
+    let mut a = [[0; NUM_DIGITS]; NUM_DIGITS * (NUM_DIGITS - 1)];
+    let mut skip1 = 0;
     let mut t = 0;
-    while t < NUM_DIGITS {
-        let mut i = 0;
-        while i < NUM_DIGITS {
-            if i < t {
-                a[t][i] = i + 1;
-            } else if i > t {
-                a[t][i - 1] = i + 1;
+    while skip1 < NUM_DIGITS {
+        let mut skip2 = 0;
+        while skip2 < NUM_DIGITS {
+            if skip1 != skip2 {
+                let mut i = 0;
+                let mut j = 0;
+                while i < NUM_DIGITS {
+                    if i != skip1 && i != skip2 {
+                        a[t][j] = i + 1;
+                        j += 1;
+                    }
+                    i += 1;
+                }
+                a[t][NUM_DIGITS - 2] = skip1 + 1;
+                a[t][NUM_DIGITS - 1] = skip2 + 1;
+                t += 1;
             }
-            i += 1;
+            skip2 += 1;
         }
-        a[t][NUM_DIGITS - 1] = t + 1;
-        t += 1;
+        skip1 += 1;
     }
     a
 };
@@ -40,8 +49,8 @@ fn main() {
         .into_par_iter()
         .map(|mut digits_swap_end| {
             let mut count_results = 0;
-            // Shuffle the first n-1 elements.
-            heap_unrolled_(DIGITS.len() - 1, &mut digits_swap_end, &mut |b| {
+            // Shuffle the first n-2 elements.
+            heap_unrolled_(DIGITS.len() - 2, &mut digits_swap_end, &mut |b| {
                 let mut digits = DIGITS;
                 heap_unrolled_(DIGITS.len(), &mut digits, &mut |c| {
                     // The heap_recursive inner loop constantly changes the first few elements of c. Reversing it helps with branch prediction???

@@ -15,4 +15,4 @@ Bonus question: How many correct answers are there?
 
 157,593,600 total correct answers
 
-~2 mins 40s to compute
+~2 mins flat to compute
