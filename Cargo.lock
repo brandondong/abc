@@ -6,7 +6,6 @@ version = 3
 name = "abc"
 version = "0.1.0"
 dependencies = [
- "permutohedron",
  "rayon",
 ]
 
@@ -111,12 +110,6 @@ dependencies = [
  "hermit-abi",
  "libc",
 ]
-
-[[package]]
-name = "permutohedron"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b687ff7b5da449d39e418ad391e5e08da53ec334903ddbb921db208908fc372c"
 
 [[package]]
 name = "rayon"

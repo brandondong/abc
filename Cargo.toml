@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 rayon = "1.5.1"
-permutohedron = "0.2.4"

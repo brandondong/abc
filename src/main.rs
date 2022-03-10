@@ -1,6 +1,5 @@
-use std::{iter, time::Instant};
+use std::time::Instant;
 
-use permutohedron::heap_recursive;
 use rayon::prelude::*;
 
 const NUM_DIGITS: usize = 9;
@@ -15,9 +14,9 @@ const DIGITS: [usize; NUM_DIGITS] = {
     a
 };
 
-// Parallelize the task by splitting into permutations of n-1 elements and then adding back the missing element later.
-const DIGITS_MISSING_ELEMENT: [[usize; NUM_DIGITS - 1]; NUM_DIGITS] = {
-    let mut a = [[0; NUM_DIGITS - 1]; NUM_DIGITS];
+// Parallelize the task by splitting into permutations of n-1 elements with the missing element swapped to the end.
+const DIGITS_SWAP_END: [[usize; NUM_DIGITS]; NUM_DIGITS] = {
+    let mut a = [[0; NUM_DIGITS]; NUM_DIGITS];
     let mut t = 0;
     while t < NUM_DIGITS {
         let mut i = 0;
@@ -29,6 +28,7 @@ const DIGITS_MISSING_ELEMENT: [[usize; NUM_DIGITS - 1]; NUM_DIGITS] = {
             }
             i += 1;
         }
+        a[t][NUM_DIGITS - 1] = t + 1;
         t += 1;
     }
     a
@@ -36,17 +36,16 @@ const DIGITS_MISSING_ELEMENT: [[usize; NUM_DIGITS - 1]; NUM_DIGITS] = {
 
 fn main() {
     let now = Instant::now();
-    let count_results = (0..NUM_DIGITS)
+    let count_results = DIGITS_SWAP_END
         .into_par_iter()
-        .map(|t| {
+        .map(|mut digits_swap_end| {
             let mut count_results = 0;
-            let mut digits = DIGITS_MISSING_ELEMENT[t];
-            heap_recursive(&mut digits, |b| {
+            // Shuffle the first n-1 elements.
+            heap_unrolled_(DIGITS.len() - 1, &mut digits_swap_end, &mut |b| {
                 let mut digits = DIGITS;
-                heap_recursive(&mut digits, |c| {
+                heap_unrolled_(DIGITS.len(), &mut digits, &mut |c| {
                     // The heap_recursive inner loop constantly changes the first few elements of c. Reversing it helps with branch prediction???
-                    // No idea why this formulation of b is fastest...
-                    if all_digit_sum(b.iter().chain(iter::once(&(t + 1))), c.iter().rev()) {
+                    if all_digit_sum(b.iter(), c.iter().rev()) {
                         count_results += 1;
                     }
                 });
@@ -90,4 +89,37 @@ fn all_digit_sum<'a>(
         carry = digit_sum / 10;
     }
     carry == 0
+}
+
+// Extracted private helper function from permutohedron.
+fn heap_unrolled_<T, F>(n: usize, xs: &mut [T], f: &mut F)
+where
+    F: FnMut(&mut [T]),
+{
+    debug_assert!(n >= 3);
+    match n {
+        3 => {
+            // [1, 2, 3], [2, 1, 3], [3, 1, 2], [1, 3, 2], [2, 3, 1], [3, 2, 1]
+            f(xs);
+            xs.swap(0, 1);
+            f(xs);
+            xs.swap(0, 2);
+            f(xs);
+            xs.swap(0, 1);
+            f(xs);
+            xs.swap(0, 2);
+            f(xs);
+            xs.swap(0, 1);
+            f(xs)
+        }
+        n => {
+            for i in 0..n - 1 {
+                heap_unrolled_(n - 1, xs, f);
+                let j = if n % 2 == 0 { i } else { 0 };
+                // One swap *between* each iteration.
+                xs.swap(j, n - 1);
+            }
+            heap_unrolled_(n - 1, xs, f)
+        }
+    }
 }
