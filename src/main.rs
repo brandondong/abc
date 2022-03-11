@@ -4,18 +4,19 @@ use rayon::prelude::*;
 
 const NUM_DIGITS: usize = 9;
 
-const DIGITS: [usize; NUM_DIGITS] = {
+const DIGITS: [u32; NUM_DIGITS] = {
     let mut a = [0; NUM_DIGITS];
     let mut i = 0;
     while i < NUM_DIGITS {
-        a[i] = i + 1;
+        a[i] = (i + 1) as u32;
         i += 1;
     }
     a
 };
 
-// Parallelize the task by splitting into permutations of n-2 elements with the missing elements swapped to the end.
-const DIGITS_SWAP_END: [[usize; NUM_DIGITS]; NUM_DIGITS * (NUM_DIGITS - 1)] = {
+// Every permutation of 2 elements gets its own parallel task where the remaining n-2 elements get shuffled.
+const DIGITS_SWAP_END: [[u32; NUM_DIGITS]; NUM_DIGITS * (NUM_DIGITS - 1)] = {
+    // Move each of the 2 elements to the end of the array in preparation for the heap recursive algorithm.
     let mut a = [[0; NUM_DIGITS]; NUM_DIGITS * (NUM_DIGITS - 1)];
     let mut skip1 = 0;
     let mut t = 0;
@@ -27,13 +28,13 @@ const DIGITS_SWAP_END: [[usize; NUM_DIGITS]; NUM_DIGITS * (NUM_DIGITS - 1)] = {
                 let mut j = 0;
                 while i < NUM_DIGITS {
                     if i != skip1 && i != skip2 {
-                        a[t][j] = i + 1;
+                        a[t][j] = (i + 1) as u32;
                         j += 1;
                     }
                     i += 1;
                 }
-                a[t][NUM_DIGITS - 2] = skip1 + 1;
-                a[t][NUM_DIGITS - 1] = skip2 + 1;
+                a[t][NUM_DIGITS - 2] = (skip1 + 1) as u32;
+                a[t][NUM_DIGITS - 1] = (skip2 + 1) as u32;
                 t += 1;
             }
             skip2 += 1;
@@ -70,17 +71,13 @@ fn main() {
     );
 }
 
-fn all_digit_sum<'a>(
-    v1: impl Iterator<Item = &'a usize>,
-    v2: impl Iterator<Item = &'a usize>,
-) -> bool {
+fn all_digit_sum<'a>(v1: impl Iterator<Item = &'a u32>, v2: impl Iterator<Item = &'a u32>) -> bool {
     // Mark digits outside the range as having been already encountered.
-    const DIGITS_ENCOUNTERED: [bool; 10] = {
-        let mut a = [false; 10];
-        a[0] = true;
-        let mut i = NUM_DIGITS + 1;
-        while i < 10 {
-            a[i] = true;
+    const DIGITS_ENCOUNTERED: u32 = {
+        let mut a = !0;
+        let mut i = 0;
+        while i < NUM_DIGITS {
+            a &= !(1 << (i + 1));
             i += 1;
         }
         a
@@ -90,11 +87,11 @@ fn all_digit_sum<'a>(
     for (i1, i2) in v1.zip(v2) {
         let digit_sum = i1 + i2 + carry;
         let digit = digit_sum % 10;
-        let encountered = digits_encountered.get_mut(digit).unwrap();
-        if *encountered {
+        let encountered = (digits_encountered >> digit) & 1;
+        if encountered == 1 {
             return false;
         }
-        *encountered = true;
+        digits_encountered |= 1 << digit;
         carry = digit_sum / 10;
     }
     carry == 0

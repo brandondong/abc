@@ -15,4 +15,4 @@ Bonus question: How many correct answers are there?
 
 157,593,600 total correct answers
 
-~2 mins flat to compute
+~1 mins 45s to compute with simple parallel brute force
